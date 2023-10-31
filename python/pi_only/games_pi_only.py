@@ -317,12 +317,17 @@ def main():
     drawClock(1)
     if PI:
         show_message(device, "Let's play", fill="white", font=proportional(CP437_FONT))
+        sprite_count = 0
 
     while True:
         clearScreen()
         # drawSymbols()
         if PI:
-            drawImage('/home/pi/select.bmp')
+            # drawImage('/home/pi/select.bmp')
+            if sprite_count == 100: sprite_count=0
+            sprite_path = '/home/happylab/magic-table/python/pi_only/select_sprite/select_' + str(sprite_count+1) + '.bmp'
+            sprite_count += 1
+            drawImage(sprite_path)
         else:
             drawImage('select.bmp')
         updateScreen()
@@ -354,35 +359,10 @@ def main():
 
             # Handle joystick hotplug
             if event.type == pygame.JOYDEVICEADDED:
-                # This event will be generated when the program starts for every
-                # joystick, filling up the list without needing to create them manually.
-                joy = pygame.joystick.Joystick(event.device_index)
-                joysticks[joy.get_instance_id()] = joy
-                populatePlayers(joy)
-                print(f"Joystick {joy.get_instance_id()} connected")
-                show_message(device, f"Joystick {joy.get_instance_id()} connected", fill="white",
-                             font=proportional(CP437_FONT),
-                             scroll_delay=0.01)
-                print("Gamepads found: " + str(pygame.joystick.get_count()))
-                print(f"Joysticks: {joysticks}")
+                joystick_add(event)
 
             if event.type == pygame.JOYDEVICEREMOVED:
-                try:
-                    if player_id["player1"] is event.instance_id:
-                        player_id["player1"] = -1
-                    elif player_id["player2"] is event.instance_id:
-                        player_id["player2"] = -1
-                    else:
-                        print(f"Error: No such Joystick as a player! Event:{event} Key:{event.instance_id}")
-                    del joysticks[event.instance_id]
-                    print(f"Joystick {event.instance_id} disconnected")
-                    show_message(device, f"Joystick {event.instance_id} disconnected", fill="white",
-                                 font=proportional(CP437_FONT),
-                                 scroll_delay=0.01)
-                except:
-                    print(f"key not found! Event:{event} Key:{event.instance_id}")
-                print(f"Joysticks: {joysticks}")
-                print("Gamepads found: " + str(pygame.joystick.get_count()))
+                joystick_remove(event)
 
             if event.type == pygame.QUIT:  # get all the QUIT events
                 terminate()  # terminate if any QUIT events are present
@@ -391,6 +371,37 @@ def main():
 
     terminate()
 
+
+def joystick_add(event):
+    # This event will be generated when the program starts for every
+    # joystick, filling up the list without needing to create them manually.
+    joy = pygame.joystick.Joystick(event.device_index)
+    joysticks[joy.get_instance_id()] = joy
+    populatePlayers(joy)
+    print(f"Joystick {joy.get_instance_id()} connected")
+    show_message(device, f"Joystick {joy.get_instance_id()} connected", fill="white",
+                 font=proportional(CP437_FONT),
+                 scroll_delay=0.01)
+    print("Gamepads found: " + str(pygame.joystick.get_count()))
+    print(f"Joysticks: {joysticks}")
+
+def joystick_remove(event):
+    try:
+        if player_id["player1"] is event.instance_id:
+            player_id["player1"] = -1
+        elif player_id["player2"] is event.instance_id:
+            player_id["player2"] = -1
+        else:
+            print(f"Error: No such Joystick as a player! Event:{event} Key:{event.instance_id}")
+        del joysticks[event.instance_id]
+        print(f"Joystick {event.instance_id} disconnected")
+        show_message(device, f"Joystick {event.instance_id} disconnected", fill="white",
+                     font=proportional(CP437_FONT),
+                     scroll_delay=0.01)
+    except:
+        print(f"key not found! Event:{event} Key:{event.instance_id}")
+    print(f"Joysticks: {joysticks}")
+    print("Gamepads found: " + str(pygame.joystick.get_count()))
 
 def populatePlayers(joy):
     player = 0
@@ -457,6 +468,14 @@ def runPongGame():
                     if val == 0:  # On 0-Position end moment of Lower Player
                         movingLeftUpper = False
                         movingRightUpper = False
+            if event.type == pygame.JOYBUTTONDOWN:
+                if (event.button==JKEY_SEL):
+                    # quit game
+                    return
+            if event.type == pygame.KEYDOWN:
+                if (event.key == JKEY_SEL):
+                    #quit game
+                    return
 
         if (movingLeftLower) and time.time() - lastLowerMoveSidewaysTime > MOVESIDEWAYSFREQ:
             if lowerbarx > 1:
@@ -835,6 +854,10 @@ def runTetrisGame():
                     score += i  # TODO: more digits on numbercounter, more scores
                     fallingPiece['y'] += i - 1
 
+                if (event.key == JKEY_SEL):
+                    #quit game
+                    return
+
             if event.type == pygame.KEYUP:
                 movingDown = False
                 movingLeft = False
@@ -855,7 +878,9 @@ def runTetrisGame():
                             break
                     score += i  # TODO: more digits on numbercounter, more scores
                     fallingPiece['y'] += i - 1
-
+                if (event.button==JKEY_SEL):
+                    # quit game
+                    return
                 #  return
 
         # handle moving the piece because of user input
@@ -947,23 +972,18 @@ def drawClock(color):
 
             if event.type == pygame.QUIT:  # get all the QUIT events
                 terminate()  # terminate if any QUIT events are present
-
-        # check if joystick is still connected
-        if PI:
-            if joystick_cnt == 25:
-                joystick_cnt = 0
-                pygame.joystick.quit()
-                pygame.joystick.init()
-                try:
-                    joystick = pygame.joystick.Joystick(0)  # create a joystick instance
-                    joystick.init()  # init instance
-                    # print("Initialized joystick: {}".format(joystick.get_name()))
-                    # joystick_detected = True
-                except pygame.error:
-                    print("no joystick found.")
-                    # joystick_detected = False
-            else:
-                joystick_cnt += 1
+            if event.type == pygame.JOYDEVICEADDED:
+                joystick_add(event)
+            if event.type == pygame.JOYDEVICEREMOVED:
+                joystick_remove(event)
+            if event.type == pygame.JOYBUTTONDOWN:
+                if (event.button==JKEY_SEL):
+                    # quit game
+                    return
+            if event.type == pygame.KEYDOWN:
+                if (event.key == JKEY_SEL):
+                    #quit game
+                    return
 
         ltime = time.localtime()
         hour = ltime.tm_hour
