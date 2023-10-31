@@ -367,7 +367,7 @@ def main():
             if event.type == pygame.QUIT:  # get all the QUIT events
                 terminate()  # terminate if any QUIT events are present
 
-        time.sleep(.1)
+        time.sleep(.1*1.25)
 
     terminate()
 
